@@ -1,5 +1,3 @@
-set verbose off
-
 function string trim_extra_lines(const string multi)
     txt = strsplit(multi, "\n")
     return txt[1]
@@ -37,7 +35,10 @@ function scalar find_owner(const string owner, const bundles vm)
     return ret
 end function
 
-function bundle gdtinfo(string filename)
+
+function bundle get_gdtinfo (const string filename)
+    /* */
+
     bundle ret = null
 
     if $version < 20205
