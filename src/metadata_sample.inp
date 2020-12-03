@@ -1,0 +1,13 @@
+clear
+set verbose off
+
+set workdir "/home/at/git/metadata"
+
+include "./src/metadata.inp" --force
+
+
+loop foreach i denmark mroz87 grunfeld
+    b = gdtinfo("$i.gdt")
+    gdtinfo_print(b, 1)
+endloop
+

@@ -1,0 +1,119 @@
+set verbose off
+
+function string trim_extra_lines(const string multi)
+    txt = strsplit(multi, "\n")
+    return txt[1]
+end function
+
+function bundle var_metadata(const string s, scalar v)
+    bundle ret = null
+    string prefix = sprintf("/gretldata[1]/variables/variable[%d]/", v)
+    ret.name = trim_extra_lines(xmlget(s, prefix ~ "@name"))
+
+    n = 0
+    a = xmlget(s, prefix ~ "@label", &n)
+    if n
+        ret.label = trim_extra_lines(a)
+    endif
+
+    ret.string_valued = 0
+    ret.discrete = 0
+    a = xmlget(s, prefix ~ "@discrete", &n)
+    if n
+        ret.discrete = trim_extra_lines(a) == "true"
+    endif
+
+    return ret
+end function
+
+function scalar find_owner(const string owner, const bundles vm)
+    ret = NA
+    loop i = 1 .. nelem(vm)
+        if owner == vm[i].name
+            ret = i
+            break
+        endif
+    endloop
+    return ret
+end function
+
+function bundle gdtinfo(string filename)
+    bundle ret = null
+
+    if $version < 20205
+    prrintf "Sorry, you need a newer gretl version for this\n"
+        return ret
+    endif
+
+    catch s = readfile(filename)
+    if $error
+    prrintf "Error reading %s\n", filename
+        return ret
+    endif
+
+    ngot = 0
+    d = xmlget(s, "//description", &ngot)
+    if ngot
+        ret.description = trim_extra_lines(d)
+    endif
+
+    catch v = xmlget(s, "//gretldata[1]/@version", &ngot)
+    if ngot
+        ret.version = trim_extra_lines(v)
+    endif
+
+    ret.name = trim_extra_lines(xmlget(s, "//gretldata[1]/@name"))
+    ret.pd = atof(xmlget(s, "//gretldata[1]/@frequency"))
+    ret.t1 = trim_extra_lines(xmlget(s, "//gretldata[1]/@" ~ "startobs"))
+    ret.t2 = trim_extra_lines(xmlget(s, "//gretldata[1]/@" ~ "endobs"))
+    ret.type = trim_extra_lines(xmlget(s, "//gretldata[1]/@type"))
+
+    ret.nvar = atof(xmlget(s, "/gretldata[1]/variables/@count"))
+
+    if ret.nvar > 0
+        bundles varmetadata = array(ret.nvar)
+        loop i = 1 .. ret.nvar
+            varmetadata[i] = var_metadata(s, i)
+        endloop
+
+        st = xmlget(s, "/gretldata[1]/string-tables/@count", &ngot)
+        if ngot
+            nt = atof(st)
+            loop i = 1 .. nt
+                path = sprintf("/gretldata[1]/string-tables/valstrings[%d]", i)
+                owner = trim_extra_lines(xmlget(s, path ~ "/@owner"))
+                nv = find_owner(owner, varmetadata)
+                varmetadata[nv].string_valued = 1
+
+                raw = trim_extra_lines(xmlget(s, path))
+                sep = sprintf("\" \"")
+                dq = sprintf("\"")
+                raw = strsub(raw, sep, "|")
+                raw = strsub(raw, dq, "")
+                varmetadata[nv]["strvals"] = strsplit(raw, "|")
+            endloop
+        endif
+        ret.varmetadata = varmetadata
+    endif
+
+    return ret
+end function
+
+function void gdtinfo_print(bundle b, int verbose[0])
+    printf "%s, %s. Contains %d series\n", b.name, b.type, b.nvar
+    printf "first obs: %s, last obs: %s\n", b.t1, b.t2
+    if verbose
+        loop i = 1 .. b.nvar
+            md = b.varmetadata[i]
+            printf "%3d: %-32s", i, md.name
+            printf "%s", md.discrete ? " D" : "  "
+            printf "%s", md.string_valued ? "S" : " "
+            if inbundle(md, "label")
+                printf " %s", md.label
+            endif
+            printf "\n"
+        endloop
+    endif
+    printf "\n\n"
+end function
+
