@@ -3,10 +3,10 @@ set -e
 
 DIR=$(dirname $(realpath "$0")) 	# locate folder where this sh-script is located in
 SCRIPT="./tests/run_tests.inp"
-PROJECT="{{TEMPLATE_NAME}"
+PROJECT="metadata"
 
-cd $DIR
-echo "Switched to ${DIR}"
+cd ${DIR}
+echo "Switched to ${DIR}."
 
 gretlcli -b -e -q ${SCRIPT}
 
