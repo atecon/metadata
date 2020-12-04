@@ -7,8 +7,108 @@ include assertion.gfn
 include "./src/metadata.inp" --force
 
 
+function void test_read_and_add_xml_buffer_ok (void)
+    print "Start testing read_and_add_xml_buffer() if file exists"
+
+    # Given
+    string filename = "./data/mroz87.xml"
+    bundle B_actual = _(filename)
+
+    # When
+    scalar error_actual = read_and_add_xml_buffer(&B_actual)
+    string xml_buffer_actual = B_actual.xml_buffer
+
+    string xml_buffer_expected = readfile(filename)
+    scalar error_expected = FALSE
+
+    # Then
+    assert(error_actual == error_expected)
+    assert(xml_buffer_actual == xml_buffer_expected)
+end function
+test_read_and_add_xml_buffer_ok()
+
+
+function void test_read_and_add_xml_buffer_er (void)
+    print "Start testing read_and_add_xml_buffer() if file not exists"
+
+    # Given
+    string filename = "some_non_existing_file"
+    bundle B_actual = _(filename)
+
+    # When
+    scalar error_actual = read_and_add_xml_buffer(&B_actual)
+    scalar error_expected = TRUE
+
+    # Then
+    assert(error_actual == error_expected)
+end function
+test_read_and_add_xml_buffer_er()
+
+
+function void test_get_paths_to_parse (void)
+    print "Start testing get_paths_to_parse()."
+
+    # Given
+
+    # When
+    bundle paths_actual = get_paths_to_parse()
+
+    scalar n_paths_expected = nelem(paths_actual)
+    scalar n_paths_expected = 2
+
+    # Then
+    assert(n_paths_expected == n_paths_expected)
+end function
+test_get_paths_to_parse()
+
+
+function void test_get_path_content (void)
+    print "Start testing get_path_content() for the case that the path actually exists."
+
+    # Given
+    string filename = "./data/mroz87.xml"
+    string xml_buffer = readfile(filename)
+    string xml_identifier = "//description"
+
+    # When
+    scalar n_got_actual = 0
+    string content_actual = get_path_content(xml_identifier, xml_buffer,\
+                                            &n_got_actual)
+    scalar n_got_expected = 1
+    string content_expected = xmlget(xml_buffer, xml_identifier,\
+                                    &n_got_expected)
+
+    # Then
+    assert(n_got_actual == n_got_expected)
+    assert(content_actual == content_expected)
+end function
+test_get_path_content()
+
+
+function void test_get_path_content_noexists (void)
+    print "Start testing get_path_content() for the case that the path does not exist."
+
+    # Given
+    string filename = "./data/mroz87.xml"
+    string xml_buffer = readfile(filename)
+    string xml_identifier = "//foo"
+
+    # When
+    scalar n_got_actual = 0
+    string content_actual = get_path_content(xml_identifier, xml_buffer,\
+                                            &n_got_actual)
+    scalar n_got_expected = 0
+    string content_expected = ""
+
+    # Then
+    assert(n_got_actual == n_got_expected)
+    assert(content_actual == content_expected)
+end function
+test_get_path_content_noexists()
+
 
 
 
 print "Finished all tests succesfully."
 quit
+

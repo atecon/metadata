@@ -36,29 +36,143 @@ function scalar find_owner(const string owner, const bundles vm)
 end function
 
 
+function scalar version_is_ok (void)
+    /* */
+
+    if $version >= 20205
+        return TRUE
+    else
+        printError("At minimum Gretl version 2020e required.")
+        return FALSE
+    endif
+end function
+
+function void printInfo (const string s)
+    printf "\nInfo: %s\n", s
+end function
+
+function void printWarning (const string s)
+    printf "\nWarning: %s\n", s
+end function
+
+function void printError (const string s)
+    printf "\nError: %s\n", s
+end function
+
+
+function scalar read_and_add_xml_buffer (bundle *self)
+    /* Read gdt file which has a xml structure. */
+
+    catch self.xml_buffer = readfile(self.filename)
+    if $error
+        printError(sprintf("Failed to read file '%s'. Abort.\n", self.filename))
+        return TRUE
+    else
+        return FALSE
+    endif
+end function
+
+
+function bundle get_paths_to_parse (void)
+    /* Config paths which should be parsed. */
+
+    bundle Paths = _(\
+        description = "//description",
+        version = "//gretldata[1]/@version"\
+        )
+
+    return Paths
+end function
+
+function string get_path_content (const string path "xpath identifier",
+                                  const string xml_buffer,
+                                  scalar *n_got "Number of occurences of path")
+    /* Extract content of some path in xml. */
+
+    string path_content
+
+    catch path_content = xmlget(xml_buffer, path, &ngot)
+    if $error
+        printWarning(sprintf("Failed to find the path '%s'. Ignore.", path))
+    endif
+
+    return path_content
+end function
+
+
+function bundle extract_prepare_path_contents (const bundle self)
+    /* Loop over all specified paths and extract its contens from xml buffer. */
+
+    bundle PreparedPathContents
+    strings keys = getkeys(self.get_paths_to_parse)
+
+    loop foreach i keys
+        scalar n_got = 0
+        scalar err = NA
+
+        string keyname = sprintf("%s", "$i")
+
+        /*
+        eval self.get_paths_to_parse["$i"]
+        eval self.xml_buffer
+        eval get_path_content(\
+                                        self.get_paths_to_parse["$i"],\
+                                        self.xml_buffer, &n_got)
+        */
+
+        string path = self.get_paths_to_parse["$i"]
+        string buffer = self.xml_buffer
+        eval get_path_content(path, buffer, &n_got)
+
+        stop
+        string PreparedPathContents["@keyname"] = get_path_content(\
+                                        self.get_paths_to_parse["$i"],\
+                                        self.xml_buffer, &n_got)
+
+        if n_got
+            PreparedPathContents["@keyname"] = trim_extra_lines(PreparedPathContents["@keyname"])
+        else
+            # print that key was not existent in xml buffer
+        endif
+    endloop
+
+    return  PreparedPathContents
+end function
+
+
 function bundle get_gdtinfo (const string filename)
     /* */
 
-    bundle ret = null
+    bundle self = null
+    string self.filename = filename
 
-    if $version < 20205
-    prrintf "Sorry, you need a newer gretl version for this\n"
-        return ret
+    if !version_is_ok()
+        return null
     endif
 
-    catch s = readfile(filename)
-    if $error
-    prrintf "Error reading %s\n", filename
-        return ret
+    err = read_and_add_xml_buffer(&self)
+    if err
+        return null
     endif
+
+    bundle self.get_paths_to_parse = get_paths_to_parse()
+
+
+
+    ** HIER WEITERMACHEN:
+    Aus irgeneinem Grund, wird aktuell der 'path' nicht im xml gefunden.
+    bundle PreparedPathContents = extract_prepare_path_contents(self)
+    print PreparedPathContents
+    stop
 
     ngot = 0
-    d = xmlget(s, "//description", &ngot)
-    if ngot
-        ret.description = trim_extra_lines(d)
-    endif
+    d = xmlget(self.xml_buffer, "//description", &ngot)
+    print d
+    stop
 
     catch v = xmlget(s, "//gretldata[1]/@version", &ngot)
+    print v
+    stop
     if ngot
         ret.version = trim_extra_lines(v)
     endif
