@@ -107,6 +107,27 @@ end function
 test_get_path_content_noexists()
 
 
+function void test_cast_pd_and_nvar_to_int (void)
+    print "Start testing cast_pd_and_nvar_to_int()."
+
+    # Given
+    bundle B = _(some_string = "huhu", some_scalar = 3.2, pd = "7", \
+                 nvar = "23")
+
+    # When
+    cast_pd_and_nvar_to_int(&B)
+    scalar pd_actual = B.pd
+    scalar nvar_actual = B.nvar
+
+    scalar pd_expected = 7
+    scalar nvar_expected = 23
+
+    # Then
+    assert(pd_actual == pd_expected)
+    assert(nvar_actual == nvar_expected)
+end function
+test_cast_pd_and_nvar_to_int()
+
 
 
 print "Finished all tests succesfully."

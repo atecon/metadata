@@ -1,15 +1,18 @@
-function string trim_extra_lines(const string multi)
-    txt = strsplit(multi, "\n")
-    return txt[1]
+function string trim_extra_lines(const string buffer)
+    return strsplit(buffer, "\n")[1]
 end function
 
-function bundle var_metadata(const string s, scalar v)
+
+function bundle var_metadata (const string s, scalar v)
+    /* */
+
     bundle ret = null
+    scalar n_got = 0
+
     string prefix = sprintf("/gretldata[1]/variables/variable[%d]/", v)
     ret.name = trim_extra_lines(xmlget(s, prefix ~ "@name"))
 
-    n = 0
-    a = xmlget(s, prefix ~ "@label", &n)
+    a = xmlget(s, prefix ~ "@label", &n_got)
     if n
         ret.label = trim_extra_lines(a)
     endif
@@ -77,9 +80,15 @@ function bundle get_paths_to_parse (void)
     /* Config paths which should be parsed. */
 
     bundle Paths = _(\
-        description = "//description",
-        version = "//gretldata[1]/@version"\
-        )
+                        description = "//description", \
+                        version = "//gretldata[1]/@version", \
+                        name = "//gretldata[1]/@name", \
+                        t1 = "//gretldata[1]/@" ~ "startobs", \
+                        t2 = "//gretldata[1]/@" ~ "endobs", \
+                        type = "//gretldata[1]/@type", \
+                        pd = "//gretldata[1]/@frequency", \
+                        nvar = "/gretldata[1]/variables/@count" \
+                    )
 
     return Paths
 end function
@@ -91,7 +100,7 @@ function string get_path_content (const string path "xpath identifier",
 
     string path_content
 
-    catch path_content = xmlget(xml_buffer, path, &ngot)
+    path_content = xmlget(xml_buffer, path, &n_got)
     if $error
         printWarning(sprintf("Failed to find the path '%s'. Ignore.", path))
     endif
@@ -101,42 +110,38 @@ end function
 
 
 function bundle extract_prepare_path_contents (const bundle self)
-    /* Loop over all specified paths and extract its contens from xml buffer. */
+    /* Loop over all specified paths and extract its contens from xml buffer. Store output in a key-value store. */
 
-    bundle PreparedPathContents
+    bundle PathContents
     strings keys = getkeys(self.get_paths_to_parse)
 
     loop foreach i keys
         scalar n_got = 0
-        scalar err = NA
-
         string keyname = sprintf("%s", "$i")
 
-        /*
-        eval self.get_paths_to_parse["$i"]
-        eval self.xml_buffer
-        eval get_path_content(\
-                                        self.get_paths_to_parse["$i"],\
-                                        self.xml_buffer, &n_got)
-        */
-
-        string path = self.get_paths_to_parse["$i"]
-        string buffer = self.xml_buffer
-        eval get_path_content(path, buffer, &n_got)
-
-        stop
-        string PreparedPathContents["@keyname"] = get_path_content(\
-                                        self.get_paths_to_parse["$i"],\
-                                        self.xml_buffer, &n_got)
+        string PathContents["@keyname"] = \
+                get_path_content(\
+                                self.get_paths_to_parse["$i"],\
+                                self.xml_buffer, &n_got)
 
         if n_got
-            PreparedPathContents["@keyname"] = trim_extra_lines(PreparedPathContents["@keyname"])
-        else
-            # print that key was not existent in xml buffer
+            PathContents["@keyname"] = trim_extra_lines(PathContents["@keyname"])
         endif
     endloop
 
-    return  PreparedPathContents
+    return PathContents
+end function
+
+
+function void cast_pd_and_nvar_to_int (bundle *B)
+    /* Cast string values for keys "pd" and "nvar" to integer. */
+
+    if inbundle(B, "pd")
+        scalar B.pd = atof(B.pd)
+    endif
+    if inbundle(B, "nvar")
+        scalar B.nvar = atof(B.nvar)
+    endif
 end function
 
 
@@ -157,36 +162,17 @@ function bundle get_gdtinfo (const string filename)
 
     bundle self.get_paths_to_parse = get_paths_to_parse()
 
+    # TODO: test extract_prepare_path_contents()
+    bundle PathContents = extract_prepare_path_contents(self)
 
+    cast_pd_and_nvar_to_int(&PathContents)
 
-    ** HIER WEITERMACHEN:
-    Aus irgeneinem Grund, wird aktuell der 'path' nicht im xml gefunden.
-    bundle PreparedPathContents = extract_prepare_path_contents(self)
-    print PreparedPathContents
-    stop
+    if PathContents.nvar
 
-    ngot = 0
-    d = xmlget(self.xml_buffer, "//description", &ngot)
-    print d
-    stop
+        bundles varmetadata = array(PathContents.nvar)
 
-    catch v = xmlget(s, "//gretldata[1]/@version", &ngot)
-    print v
-    stop
-    if ngot
-        ret.version = trim_extra_lines(v)
-    endif
+        *** var_metadata() macht überwiegend Dinge, die auch in extract_prepare_path_contents() getan werden. Merge die beiden () wo möglich.
 
-    ret.name = trim_extra_lines(xmlget(s, "//gretldata[1]/@name"))
-    ret.pd = atof(xmlget(s, "//gretldata[1]/@frequency"))
-    ret.t1 = trim_extra_lines(xmlget(s, "//gretldata[1]/@" ~ "startobs"))
-    ret.t2 = trim_extra_lines(xmlget(s, "//gretldata[1]/@" ~ "endobs"))
-    ret.type = trim_extra_lines(xmlget(s, "//gretldata[1]/@type"))
-
-    ret.nvar = atof(xmlget(s, "/gretldata[1]/variables/@count"))
-
-    if ret.nvar > 0
-        bundles varmetadata = array(ret.nvar)
         loop i = 1 .. ret.nvar
             varmetadata[i] = var_metadata(s, i)
         endloop
