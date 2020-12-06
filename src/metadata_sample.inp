@@ -6,7 +6,7 @@ set workdir "/home/at/git/metadata"
 include "./src/metadata.inp" --force
 
 
-loop foreach i denmark mroz87 grunfeld
+loop foreach i grunfeld
     b = get_gdtinfo("$i.gdt")
 
     gdtinfo_print(b, 1)

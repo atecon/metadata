@@ -1,41 +1,9 @@
 function string trim_extra_lines(const string buffer)
+
+    if nelem(buffer) == 0
+        return ""
+    endif
     return strsplit(buffer, "\n")[1]
-end function
-
-
-function bundle var_metadata (const string s, scalar v)
-    /* */
-
-    bundle ret = null
-    scalar n_got = 0
-
-    string prefix = sprintf("/gretldata[1]/variables/variable[%d]/", v)
-    ret.name = trim_extra_lines(xmlget(s, prefix ~ "@name"))
-
-    a = xmlget(s, prefix ~ "@label", &n_got)
-    if n
-        ret.label = trim_extra_lines(a)
-    endif
-
-    ret.string_valued = 0
-    ret.discrete = 0
-    a = xmlget(s, prefix ~ "@discrete", &n)
-    if n
-        ret.discrete = trim_extra_lines(a) == "true"
-    endif
-
-    return ret
-end function
-
-function scalar find_owner(const string owner, const bundles vm)
-    ret = NA
-    loop i = 1 .. nelem(vm)
-        if owner == vm[i].name
-            ret = i
-            break
-        endif
-    endloop
-    return ret
 end function
 
 
@@ -76,6 +44,7 @@ function scalar read_and_add_xml_buffer (bundle *self)
 end function
 
 
+# TODO: test
 function bundle get_paths_to_parse (void)
     /* Config paths which should be parsed. */
 
@@ -83,14 +52,24 @@ function bundle get_paths_to_parse (void)
                         description = "//description", \
                         version = "//gretldata[1]/@version", \
                         name = "//gretldata[1]/@name", \
-                        t1 = "//gretldata[1]/@" ~ "startobs", \
-                        t2 = "//gretldata[1]/@" ~ "endobs", \
+                        t1 = "//gretldata[1]/@startobs", \
+                        t2 = "//gretldata[1]/@endobs", \
                         type = "//gretldata[1]/@type", \
                         pd = "//gretldata[1]/@frequency", \
-                        nvar = "/gretldata[1]/variables/@count" \
+                        nvar = "/gretldata[1]/variables/@count", \
+                        n_string_vars = "/gretldata[1]/string-tables/@count" \
                     )
 
     return Paths
+end function
+
+# TODO: test
+function strings get_variable_keys_to_parse (void)
+    /* Keys of metadata for each variable/ series to parse. */
+
+    strings variable_keys = defarray("name", "label", "discrete")
+
+    return variable_keys
 end function
 
 function string get_path_content (const string path "xpath identifier",
@@ -133,16 +112,111 @@ function bundle extract_prepare_path_contents (const bundle self)
 end function
 
 
-function void cast_pd_and_nvar_to_int (bundle *B)
-    /* Cast string values for keys "pd" and "nvar" to integer. */
-
-    if inbundle(B, "pd")
-        scalar B.pd = atof(B.pd)
-    endif
-    if inbundle(B, "nvar")
-        scalar B.nvar = atof(B.nvar)
-    endif
+function strings get_value_names_to_cast_to_int (void)
+    /* Array of keys for which values should be cast to integers. */
+    return defarray("pd", "nvar", "n_string_vars")
 end function
+
+
+function void cast_value_to_integer (bundle *B)
+    /* Cast string values for keys to integers. */
+
+    strings keys = get_value_names_to_cast_to_int()
+
+    loop foreach i keys
+        if inbundle(B, "$i")
+            scalar B["$i"] = atof(B["$i"])
+        endif
+    endloop
+end function
+
+
+function void cast_discrete_value (bundle *VariableContents)
+    /* Set the key "discrete" to 0 if not existing and to 1 if "true". Per default this key is an empty string when not existing but "true" if existing. */
+
+    strings variable_id = getkeys(VariableContents)
+
+    loop foreach i variable_id
+        if inbundle(VariableContents["$i"], "discrete")
+            VariableContents["$i"].discrete = TRUE
+        else
+            VariableContents["$i"].discrete = FALSE
+        endif
+    endloop
+end function
+
+
+
+function bundle extract_variable_contents (const bundle PathContents,
+                                           const string xml_buffer)
+    /* Compile dictionary for each variable in data set. "key" refers to i-th variable_%d and "value" holds another dictionary referring to the metadata available for the i-th variable such as "name", "label" ect. */
+
+    bundle VariableContents
+    strings variable_keys = get_variable_keys_to_parse()
+
+    loop i=1..PathContents.nvar
+
+        string path = sprintf("/gretldata[1]/variables/variable[%d]/", i)
+
+        string variable_id = sprintf("variable_%d", $i)
+        bundle VariableContents["@variable_id"] = null
+
+        loop foreach j variable_keys
+            scalar n_got = 0
+            string key = sprintf("%s%s%s", path, "@", "$j")
+
+            string content = get_path_content(key, xml_buffer, &n_got)
+            VariableContents["@variable_id"]["$j"] = trim_extra_lines(content)
+        endloop
+    endloop
+
+    return VariableContents
+end function
+
+
+function bundle extract_series_metadata (const bundle PathContents,
+                                         const string xml_buffer)
+    /* Extract and compile for each series information such as:
+
+        string_valued: Flag whether series is string-valued (TRUE) or not (FALSE)
+        strvals: Number of distinct string-values if series is string-valued.
+        name: Name of series
+        discrete: Flag whether series is discrete
+        label: Label of series
+     */
+
+    bundle B
+
+    if PathContents.n_string_vars
+
+        loop i=1..PathContents.n_string_vars
+
+            scalar n_got = 0
+            path = sprintf("/gretldata[1]/string-tables/valstrings[%d]/", i)
+            string key = sprintf("%s%s", path, "@owner")
+
+            string owner = get_path_content(key, xml_buffer, &n_got)
+            owner = trim_extra_lines(owner)
+
+            owner
+            stop
+
+            nv = find_owner(owner, varmetadata)
+            varmetadata[nv].string_valued = 1
+
+            raw = trim_extra_lines(xmlget(s, path))
+            sep = sprintf("\" \"")
+            dq = sprintf("\"")
+            raw = strsub(raw, sep, "|")
+            raw = strsub(raw, dq, "")
+
+            varmetadata[nv]["strvals"] = strsplit(raw, "|")
+        endloop
+    endif
+
+    return B
+end function
+
 
 
 function bundle get_gdtinfo (const string filename)
@@ -162,40 +236,18 @@ function bundle get_gdtinfo (const string filename)
 
     bundle self.get_paths_to_parse = get_paths_to_parse()
 
-    # TODO: test extract_prepare_path_contents()
     bundle PathContents = extract_prepare_path_contents(self)
+    cast_value_to_integer(&PathContents)
 
-    cast_pd_and_nvar_to_int(&PathContents)
+    bundle VariableContents = extract_variable_contents(PathContents, \
+                                                        self.xml_buffer)
+    cast_discrete_value(&VariableContents)
 
-    if PathContents.nvar
 
-        bundles varmetadata = array(PathContents.nvar)
+    bundle StringValueContents = extract_series_metadata(\
+                                    PathContents, \
+                                    self.xml_buffer)
 
-        *** var_metadata() macht überwiegend Dinge, die auch in extract_prepare_path_contents() getan werden. Merge die beiden () wo möglich.
-
-        loop i = 1 .. ret.nvar
-            varmetadata[i] = var_metadata(s, i)
-        endloop
-
-        st = xmlget(s, "/gretldata[1]/string-tables/@count", &ngot)
-        if ngot
-            nt = atof(st)
-            loop i = 1 .. nt
-                path = sprintf("/gretldata[1]/string-tables/valstrings[%d]", i)
-                owner = trim_extra_lines(xmlget(s, path ~ "/@owner"))
-                nv = find_owner(owner, varmetadata)
-                varmetadata[nv].string_valued = 1
-
-                raw = trim_extra_lines(xmlget(s, path))
-                sep = sprintf("\" \"")
-                dq = sprintf("\"")
-                raw = strsub(raw, sep, "|")
-                raw = strsub(raw, dq, "")
-                varmetadata[nv]["strvals"] = strsplit(raw, "|")
-            endloop
-        endif
-        ret.varmetadata = varmetadata
-    endif
 
     return ret
 end function

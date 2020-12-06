@@ -11,7 +11,7 @@ function void test_read_and_add_xml_buffer_ok (void)
     print "Start testing read_and_add_xml_buffer() if file exists"
 
     # Given
-    string filename = "./data/mroz87.xml"
+    string filename = "./data/denmark.xml"
     bundle B_actual = _(filename)
 
     # When
@@ -66,7 +66,7 @@ function void test_get_path_content (void)
     print "Start testing get_path_content() for the case that the path actually exists."
 
     # Given
-    string filename = "./data/mroz87.xml"
+    string filename = "./data/denmark.xml"
     string xml_buffer = readfile(filename)
     string xml_identifier = "//description"
 
@@ -89,7 +89,7 @@ function void test_get_path_content_noexists (void)
     print "Start testing get_path_content() for the case that the path does not exist."
 
     # Given
-    string filename = "./data/mroz87.xml"
+    string filename = "./data/denmark.xml"
     string xml_buffer = readfile(filename)
     string xml_identifier = "//foo"
 
@@ -107,15 +107,15 @@ end function
 test_get_path_content_noexists()
 
 
-function void test_cast_pd_and_nvar_to_int (void)
-    print "Start testing cast_pd_and_nvar_to_int()."
+function void test_cast_value_to_integer (void)
+    print "Start testing cast_value_to_integer()."
 
     # Given
     bundle B = _(some_string = "huhu", some_scalar = 3.2, pd = "7", \
                  nvar = "23")
 
     # When
-    cast_pd_and_nvar_to_int(&B)
+    cast_value_to_integer(&B)
     scalar pd_actual = B.pd
     scalar nvar_actual = B.nvar
 
@@ -126,7 +126,82 @@ function void test_cast_pd_and_nvar_to_int (void)
     assert(pd_actual == pd_expected)
     assert(nvar_actual == nvar_expected)
 end function
-test_cast_pd_and_nvar_to_int()
+test_cast_value_to_integer()
+
+
+function void test_cast_discrete_value (void)
+    print "Start testing cast_discrete_value()."
+
+    # Given
+    bundle B
+    bundle B.variable_1 = _(name = "var1", discrete = "true")
+    bundle B.variable_2 = _(name = "var2")
+
+    # When
+    cast_discrete_value(&B)
+    scalar n_var_actual = nelem(B)
+    scalar n_var_expected = 2
+    string name_var1_actual = B.variable_1.name
+    string name_var2_actual = B.variable_2.name
+    string name_var1_expected = "var1"
+    string name_var2_expected = "var2"
+
+    scalar discrete_var1_actual = B.variable_1.discrete
+    scalar discrete_var2_actual = B.variable_2.discrete
+    scalar discrete_var1_expected = TRUE
+    scalar discrete_var2_expected = FALSE
+
+    # Then
+    assert(n_var_actual == n_var_actual)
+    assert(name_var1_actual == name_var1_expected)
+    assert(name_var2_actual == name_var2_expected)
+    assert(discrete_var1_actual == discrete_var1_expected)
+    assert(discrete_var2_actual == discrete_var2_expected)
+end function
+test_cast_discrete_value()
+
+
+function void test_extract_variable_contents (void)
+    print "Start testing extract_variable_contents()."
+
+    # Given
+    scalar n_series_expected = 4
+    bundle B = _(nvar = n_series_expected)
+    string filename = "./data/denmark.xml"
+    string xml_buffer = readfile(filename)
+
+    # When
+    bundle Results_actual = extract_variable_contents(B, xml_buffer)
+    strings Results_keys_actual = getkeys(Results_actual)
+    # limit testing to 2 out of 4 series
+    string Results_key_1_expected = "variable_1"
+    string Results_key_2_expected = "variable_2"
+
+    bundle variable_1_bundle_actual = Results_actual["variable_1"]
+    bundle variable_2_bundle_actual = Results_actual["variable_2"]
+
+    string variable_1_name_actual = variable_1_bundle_actual["name"]
+    string variable_1_name_expected = "LRM"
+    string variable_1_label_actual = variable_1_bundle_actual["label"]
+    string variable_1_label_expected = "log of real money supply, m2"
+
+    string variable_2_name_actual = variable_2_bundle_actual["name"]
+    string variable_2_name_expected = "LRY"
+    string variable_2_label_actual = variable_2_bundle_actual["label"]
+    string variable_2_label_expected = "log of real income"
+
+    # Then
+    assert(nelem(Results_actual) == n_series_expected)
+    assert(inbundle(Results_actual, Results_key_1_expected))
+    assert(inbundle(Results_actual, Results_key_2_expected))
+    assert(variable_1_name_actual == variable_1_name_expected)
+    assert(variable_2_name_actual == variable_2_name_expected)
+    assert(variable_1_label_actual == variable_1_label_expected)
+    assert(variable_2_label_actual == variable_2_label_expected)
+end function
+test_extract_variable_contents()
+
+
 
 
 
