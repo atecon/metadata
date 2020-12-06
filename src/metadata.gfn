@@ -1,0 +1,371 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gretl-functions>
+<gretl-function-package name="metadata" minver="20205a">
+<author email="atecon@posteo.de">Riccardo &quot;Jack&quot; Lucchetti and Artur Tarassow</author>
+<version>0.9</version>
+<date>2020-12-06</date>
+<description>Retrieve metadata from gdt files.</description>
+<tags>C13 C52</tags>
+<help>
+The metadata package supports the retrieval of varisous metadata from
+gdt data files. These data files are stored in a structured way following
+the xml standard.
+
+
+The package comprises two public functions.
+
+get_metadata()
+--------------
+filename:   string, Full path to a gdt file
+
+This function consumes a gdt file, and extracts various metadata (see
+below).
+
+return:     Bundle holding metadata.
+
+
+print_metadata()
+----------------
+self:       bundle, Bundle returned by the get_metadata() function.
+
+verbose:    bool, Flag whether to print details (TRUE) or not (FALSE,
+            default); optional
+
+This function prints a summary of metadata information.
+
+return:     nothing
+
+
+Metadata items:
+---------------
+name:             Name of the data file
+frequency:        Frequency of the data
+t1:               Starting observation
+t2:               Ending observation
+pd:               Periodicity
+type:             Type of the underlying data, e.g. time-series
+description:      String of the description
+nvar:             Number of series
+version:          Version of data set
+n_strings_var:    Number of string-valued series
+SeriesDetails:    Bundle comprising information for each of the nvar series.
+string_values:    String array including the distinct string values of a
+                  string valued series only.
+discrete:         Boolean flag indicating whether a series is discrete
+                  (TRUE) or not (FALSE)
+
+
+The bundle SeriesDetails structures information as follows:
+
+SeriesDetails
+    -| &lt;NAME_OF_SERIES_1&gt;
+        -| label (string)
+        -| string_values (string array)
+        -| discrete (bool)
+    -| &lt;NAME_OF_SERIES_2&gt;
+        -| label (string)
+        -| string_values (string array)
+        -| discrete (bool)
+
+
+
+Changelog:
+---------
+v0.9: initial release
+</help>
+<gretl-function name="get_metadata" type="bundle">
+ <params count="1">
+  <param name="filename" type="string" const="true"/>
+ </params>
+<code>/* */
+bundle self = null
+string self.filename = filename
+if !is_minimum_gretl_version()
+  return null
+endif
+err = read_and_add_xml_buffer(&amp;self)
+if err
+  return null
+endif
+bundle self.get_paths_to_parse = get_paths_to_parse()
+bundle PathContents = extract_prepare_path_contents(self)
+cast_value_to_integer(&amp;PathContents)
+bundle VariableContents = extract_variable_contents(PathContents, self.xml_buffer)
+cast_discrete_value(&amp;VariableContents)
+bundle StringValueContents = extract_series_metadata( PathContents, self.xml_buffer)
+bundle SeriesDetails = merge_var_stringvals_dicts(VariableContents, StringValueContents)
+bundle self = PathContents
+bundle self.SeriesDetails = SeriesDetails
+return self
+</code>
+</gretl-function>
+<gretl-function name="print_metadata" type="void">
+ <params count="2">
+  <param name="self" type="bundle" const="true"/>
+  <param name="verbose" type="bool" default="0" const="true"/>
+ </params>
+<code>/* Print summary in nice readable fashion.*/
+printf &quot;\n%s, %s. Contains %d series\n&quot;, self.name, self.type, self.nvar
+printf &quot;first obs: %s, last obs: %s\n&quot;, self.t1, self.t2
+if verbose
+  strings variables = getkeys(self.SeriesDetails)
+  loop foreach i variables
+    printf &quot;%3d: %-32s&quot;, i, &quot;$i&quot;
+    printf &quot;%s&quot;, self.SeriesDetails[&quot;$i&quot;].discrete ? &quot; D&quot; : &quot;  &quot;
+    print_is_string_valued(self.SeriesDetails[&quot;$i&quot;])
+    print_label(self.SeriesDetails[&quot;$i&quot;])
+    printf &quot;\n&quot;
+  endloop
+endif
+printf &quot;\n\n&quot;
+</code>
+</gretl-function>
+<gretl-function name="trim_extra_lines" type="string" private="1">
+ <params count="1">
+  <param name="buffer" type="string" const="true"/>
+ </params>
+<code>if nelem(buffer) == 0
+  return &quot;&quot;
+endif
+return strsplit(buffer, &quot;\n&quot;)[1]
+</code>
+</gretl-function>
+<gretl-function name="is_minimum_gretl_version" type="scalar" private="1">
+<code>if $version &gt;= 20205
+  return TRUE
+else
+  printError(&quot;At minimum Gretl version 2020e required.&quot;)
+  return FALSE
+endif
+</code>
+</gretl-function>
+<gretl-function name="printInfo" type="void" private="1">
+ <params count="1">
+  <param name="s" type="string" const="true"/>
+ </params>
+<code>printf &quot;\nInfo: %s\n&quot;, s
+</code>
+</gretl-function>
+<gretl-function name="printWarning" type="void" private="1">
+ <params count="1">
+  <param name="s" type="string" const="true"/>
+ </params>
+<code>printf &quot;\nWarning: %s\n&quot;, s
+</code>
+</gretl-function>
+<gretl-function name="printError" type="void" private="1">
+ <params count="1">
+  <param name="s" type="string" const="true"/>
+ </params>
+<code>printf &quot;\nError: %s\n&quot;, s
+</code>
+</gretl-function>
+<gretl-function name="read_and_add_xml_buffer" type="scalar" private="1">
+ <params count="1">
+  <param name="self" type="bundleref"/>
+ </params>
+<code>/* Read gdt file which has a xml structure. */
+catch self.xml_buffer = readfile(self.filename)
+if $error
+  printError(sprintf(&quot;Failed to read file '%s'. Abort.\n&quot;, self.filename))
+  return TRUE
+else
+  return FALSE
+endif
+</code>
+</gretl-function>
+<gretl-function name="get_paths_to_parse" type="bundle" private="1">
+<code>/* Config paths which should be parsed. */
+bundle Paths = _( description = &quot;//description&quot;, version = &quot;//gretldata[1]/@version&quot;, name = &quot;//gretldata[1]/@name&quot;, t1 = &quot;//gretldata[1]/@startobs&quot;, t2 = &quot;//gretldata[1]/@endobs&quot;, type = &quot;//gretldata[1]/@type&quot;, pd = &quot;//gretldata[1]/@frequency&quot;, nvar = &quot;/gretldata[1]/variables/@count&quot;, n_string_vars = &quot;/gretldata[1]/string-tables/@count&quot; )
+return Paths
+</code>
+</gretl-function>
+<gretl-function name="get_variable_keys_to_parse" type="strings" private="1">
+<code>/* Keys of metadata for each variable/ series to parse.
+NOTE: &quot;name&quot; MUST be positionied first! */
+strings variable_keys = defarray(&quot;name&quot;, &quot;label&quot;, &quot;discrete&quot;)
+return variable_keys
+</code>
+</gretl-function>
+<gretl-function name="get_path_content" type="string" private="1">
+ <params count="3">
+  <param name="path" type="string" const="true">
+<description>xpath identifier</description>
+  </param>
+  <param name="xml_buffer" type="string" const="true"/>
+  <param name="n_got" type="scalarref">
+<description>Number of occurences of path</description>
+  </param>
+ </params>
+<code>/* Extract content of some path in xml. */
+string path_content
+path_content = xmlget(xml_buffer, path, &amp;n_got)
+if $error
+  printWarning(sprintf(&quot;Failed to find the path '%s'. Ignore.&quot;, path))
+endif
+return path_content
+</code>
+</gretl-function>
+<gretl-function name="extract_prepare_path_contents" type="bundle" private="1">
+ <params count="1">
+  <param name="self" type="bundle" const="true"/>
+ </params>
+<code>/* Loop over all specified paths and extract its contens from xml buffer. Store output in a key-value store. */
+bundle PathContents
+strings keys = getkeys(self.get_paths_to_parse)
+loop foreach i keys
+  scalar n_got = 0
+  string keyname = sprintf(&quot;%s&quot;, &quot;$i&quot;)
+  string PathContents[&quot;@keyname&quot;] = get_path_content( self.get_paths_to_parse[&quot;$i&quot;], self.xml_buffer, &amp;n_got)
+  if n_got
+    PathContents[&quot;@keyname&quot;] = trim_extra_lines(PathContents[&quot;@keyname&quot;])
+  endif
+endloop
+return PathContents
+</code>
+</gretl-function>
+<gretl-function name="get_value_names_to_cast_to_int" type="strings" private="1">
+<code>/* Array of keys for which values should be cast to integers. */
+return defarray(&quot;pd&quot;, &quot;nvar&quot;, &quot;n_string_vars&quot;)
+</code>
+</gretl-function>
+<gretl-function name="cast_value_to_integer" type="void" private="1">
+ <params count="1">
+  <param name="B" type="bundleref"/>
+ </params>
+<code>/* Cast string values for keys to integers. */
+strings keys = get_value_names_to_cast_to_int()
+loop foreach i keys
+  if inbundle(B, &quot;$i&quot;)
+    scalar B[&quot;$i&quot;] = atof(B[&quot;$i&quot;])
+  endif
+endloop
+</code>
+</gretl-function>
+<gretl-function name="cast_discrete_value" type="void" private="1">
+ <params count="1">
+  <param name="VariableContents" type="bundleref"/>
+ </params>
+<code>/* Set the key &quot;discrete&quot; to 0 if not existing and to 1 if &quot;true&quot;. Per default this key is an empty string when not existing but &quot;true&quot; if existing. */
+strings variable_id = getkeys(VariableContents)
+loop foreach i variable_id
+  if inbundle(VariableContents[&quot;$i&quot;], &quot;discrete&quot;)
+    VariableContents[&quot;$i&quot;].discrete = TRUE
+  else
+    VariableContents[&quot;$i&quot;].discrete = FALSE
+  endif
+endloop
+</code>
+</gretl-function>
+<gretl-function name="extract_variable_contents" type="bundle" private="1">
+ <params count="2">
+  <param name="PathContents" type="bundle" const="true"/>
+  <param name="xml_buffer" type="string" const="true"/>
+ </params>
+<code>/* Compile dictionary for each variable in data set. &quot;key&quot; refers to i-th variable_%d and &quot;value&quot; holds another dictionary referring to the metadata available for the i-th variable such as &quot;name&quot;, &quot;label&quot; ect. */
+bundle VariableContents
+strings variable_keys = get_variable_keys_to_parse()
+loop i=1..PathContents.nvar
+  string path = sprintf(&quot;/gretldata[1]/variables/variable[%d]/&quot;, i)
+  string variable_id = sprintf(&quot;variable_%d&quot;, $i)
+  bundle VariableContents[&quot;@variable_id&quot;] = null
+  loop foreach j variable_keys
+    scalar n_got = 0
+    string key = sprintf(&quot;%s%s%s&quot;, path, &quot;@&quot;, &quot;$j&quot;)
+    string content = get_path_content(key, xml_buffer, &amp;n_got)
+    VariableContents[&quot;@variable_id&quot;][&quot;$j&quot;] = trim_extra_lines(content)
+  endloop
+endloop
+return VariableContents
+</code>
+</gretl-function>
+<gretl-function name="extract_series_metadata" type="bundle" private="1">
+ <params count="2">
+  <param name="PathContents" type="bundle" const="true"/>
+  <param name="xml_buffer" type="string" const="true"/>
+ </params>
+<code>/* Extract and compile for each string-valued series information in form of a ditionary such as:
+key : Name of string-valued series
+string_values: Array of distinct string-values (not ordered)
+*/
+bundle B
+if PathContents.n_string_vars
+  string string_seperator = sprintf(&quot;\&quot; \&quot;&quot;)
+  loop i=1..PathContents.n_string_vars
+    scalar n_got = 0
+    path = sprintf(&quot;/gretldata[1]/string-tables/valstrings[%d]&quot;, i)
+    string key = sprintf(&quot;%s/%s&quot;, path, &quot;@owner&quot;)
+    string owner = get_path_content(key, xml_buffer, &amp;n_got)
+    if n_got
+      owner = trim_extra_lines(owner)
+      bundle B[&quot;@owner&quot;] = null
+      string_values = get_path_content(path, xml_buffer, &amp;n_got)
+      string_values = trim_extra_lines(string_values)
+      string_values = strsub(string_values, string_seperator, &quot;|&quot;)
+      strings B[&quot;@owner&quot;].string_values = strsplit(string_values, &quot;|&quot;)
+    endif
+  endloop
+endif
+return B
+</code>
+</gretl-function>
+<gretl-function name="merge_var_stringvals_dicts" type="bundle" private="1">
+ <params count="2">
+  <param name="VariableContents" type="bundle" const="true"/>
+  <param name="StringValueContents" type="bundle" const="true"/>
+ </params>
+<code>/* Merge information of both bundles. Each series name existent in gdt acts as a separate key. */
+bundle B
+scalar n_variables = nelem(VariableContents)
+loop foreach i VariableContents
+  bundle Btmp = VariableContents[&quot;$i&quot;]
+  strings keys = getkeys(Btmp)
+  string name = Btmp.name
+  delete Btmp.name --force
+  bundle B[&quot;@name&quot;] = Btmp
+  if inbundle(StringValueContents, &quot;@name&quot;)
+    # case when series &quot;name&quot; is string-valued
+    bundle B[&quot;@name&quot;] += StringValueContents.@name
+  endif
+endloop
+return B
+</code>
+</gretl-function>
+<gretl-function name="print_is_string_valued" type="void" private="1">
+ <params count="1">
+  <param name="B" type="bundle" const="true"/>
+ </params>
+<code>if inbundle(B, &quot;is_string_valued&quot;)
+  printf &quot;%s&quot;, B.is_string_valued ? &quot;S&quot; : &quot;&quot;
+else
+  printf &quot;&quot;
+endif
+</code>
+</gretl-function>
+<gretl-function name="print_label" type="void" private="1">
+ <params count="1">
+  <param name="B" type="bundle" const="true"/>
+ </params>
+<code>if inbundle(B, &quot;label&quot;)
+  printf &quot;  %s&quot;, B.label
+else
+  printf &quot;&quot;
+endif
+</code>
+</gretl-function>
+<sample-script>
+set verbose off
+include metadata.inp
+
+Meta = get_metadata(&quot;grunfeld.gdt&quot;)
+print Meta
+
+print_metadata(Meta)
+print_metadata(Meta, TRUE)
+
+# Extract series specific information
+eval Meta.SeriesDetails.firmname
+eval Meta.SeriesDetails.invest
+</sample-script>
+</gretl-function-package>
+</gretl-functions>

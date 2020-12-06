@@ -1,4 +1,4 @@
-function string trim_extra_lines(const string buffer)
+function string trim_extra_lines (const string buffer)
 
     if nelem(buffer) == 0
         return ""
@@ -7,9 +7,7 @@ function string trim_extra_lines(const string buffer)
 end function
 
 
-function scalar version_is_ok (void)
-    /* */
-
+function scalar is_minimum_gretl_version (void)
     if $version >= 20205
         return TRUE
     else
@@ -44,7 +42,6 @@ function scalar read_and_add_xml_buffer (bundle *self)
 end function
 
 
-# TODO: test
 function bundle get_paths_to_parse (void)
     /* Config paths which should be parsed. */
 
@@ -63,9 +60,10 @@ function bundle get_paths_to_parse (void)
     return Paths
 end function
 
-# TODO: test
+
 function strings get_variable_keys_to_parse (void)
-    /* Keys of metadata for each variable/ series to parse. */
+    /* Keys of metadata for each variable/ series to parse.
+    NOTE: "name" MUST be positionied first! */
 
     strings variable_keys = defarray("name", "label", "discrete")
 
@@ -146,7 +144,6 @@ function void cast_discrete_value (bundle *VariableContents)
 end function
 
 
-
 function bundle extract_variable_contents (const bundle PathContents,
                                            const string xml_buffer)
     /* Compile dictionary for each variable in data set. "key" refers to i-th variable_%d and "value" holds another dictionary referring to the metadata available for the i-th variable such as "name", "label" ect. */
@@ -155,7 +152,6 @@ function bundle extract_variable_contents (const bundle PathContents,
     strings variable_keys = get_variable_keys_to_parse()
 
     loop i=1..PathContents.nvar
-
         string path = sprintf("/gretldata[1]/variables/variable[%d]/", i)
 
         string variable_id = sprintf("variable_%d", $i)
@@ -176,41 +172,33 @@ end function
 
 function bundle extract_series_metadata (const bundle PathContents,
                                          const string xml_buffer)
-    /* Extract and compile for each series information such as:
+    /* Extract and compile for each string-valued series information in form of a ditionary such as:
 
-        string_valued: Flag whether series is string-valued (TRUE) or not (FALSE)
-        strvals: Number of distinct string-values if series is string-valued.
-        name: Name of series
-        discrete: Flag whether series is discrete
-        label: Label of series
+        key : Name of string-valued series
+        string_values: Array of distinct string-values (not ordered)
      */
 
     bundle B
 
     if PathContents.n_string_vars
+        string string_seperator = sprintf("\" \"")
 
         loop i=1..PathContents.n_string_vars
-
             scalar n_got = 0
-            path = sprintf("/gretldata[1]/string-tables/valstrings[%d]/", i)
-            string key = sprintf("%s%s", path, "@owner")
+            path = sprintf("/gretldata[1]/string-tables/valstrings[%d]", i)
+            string key = sprintf("%s/%s", path, "@owner")
 
             string owner = get_path_content(key, xml_buffer, &n_got)
-            owner = trim_extra_lines(owner)
 
-            owner
-            stop
+            if n_got
+                owner = trim_extra_lines(owner)
+                bundle B["@owner"] = null
 
-            nv = find_owner(owner, varmetadata)
-            varmetadata[nv].string_valued = 1
-
-            raw = trim_extra_lines(xmlget(s, path))
-            sep = sprintf("\" \"")
-            dq = sprintf("\"")
-            raw = strsub(raw, sep, "|")
-            raw = strsub(raw, dq, "")
-
-            varmetadata[nv]["strvals"] = strsplit(raw, "|")
+                string_values = get_path_content(path, xml_buffer, &n_got)
+                string_values = trim_extra_lines(string_values)
+                string_values = strsub(string_values, string_seperator, "|")
+                strings B["@owner"].string_values = strsplit(string_values, "|")
+            endif
         endloop
     endif
 
@@ -218,14 +206,38 @@ function bundle extract_series_metadata (const bundle PathContents,
 end function
 
 
+function bundle merge_var_stringvals_dicts (const bundle VariableContents,
+                                            const bundle StringValueContents)
+    /* Merge information of both bundles. Each series name existent in gdt acts as a separate key. */
 
-function bundle get_gdtinfo (const string filename)
+    bundle B
+    scalar n_variables = nelem(VariableContents)
+
+    loop foreach i VariableContents
+        bundle Btmp = VariableContents["$i"]
+        strings keys = getkeys(Btmp)
+
+        string name = Btmp.name
+        delete Btmp.name --force
+        bundle B["@name"] = Btmp
+
+        if inbundle(StringValueContents, "@name")
+            # case when series "name" is string-valued
+            bundle B["@name"] += StringValueContents.@name
+        endif
+    endloop
+
+    return B
+end function
+
+
+function bundle get_metadata (const string filename)
     /* */
 
     bundle self = null
     string self.filename = filename
 
-    if !version_is_ok()
+    if !is_minimum_gretl_version()
         return null
     endif
 
@@ -248,25 +260,46 @@ function bundle get_gdtinfo (const string filename)
                                     PathContents, \
                                     self.xml_buffer)
 
+    bundle SeriesDetails = merge_var_stringvals_dicts(VariableContents, StringValueContents)
+    bundle self = PathContents
+    bundle self.SeriesDetails = SeriesDetails
 
-    return ret
+    return self
 end function
 
-function void gdtinfo_print(bundle b, int verbose[0])
-    printf "%s, %s. Contains %d series\n", b.name, b.type, b.nvar
-    printf "first obs: %s, last obs: %s\n", b.t1, b.t2
+
+function void print_is_string_valued (const bundle B)
+    if inbundle(B, "is_string_valued")
+        printf "%s", B.is_string_valued ? "S" : ""
+    else
+        printf ""
+    endif
+end function
+
+function void print_label (const bundle B)
+    if inbundle(B, "label")
+        printf "  %s", B.label
+    else
+        printf ""
+    endif
+end function
+
+
+function void print_metadata (const bundle self, const bool verbose[0])
+    /* Print summary in nice readable fashion.*/
+
+    printf "\n%s, %s. Contains %d series\n", self.name, self.type, self.nvar
+    printf "first obs: %s, last obs: %s\n", self.t1, self.t2
+
     if verbose
-        loop i = 1 .. b.nvar
-            md = b.varmetadata[i]
-            printf "%3d: %-32s", i, md.name
-            printf "%s", md.discrete ? " D" : "  "
-            printf "%s", md.string_valued ? "S" : " "
-            if inbundle(md, "label")
-                printf " %s", md.label
-            endif
+        strings variables = getkeys(self.SeriesDetails)
+        loop foreach i variables
+            printf "%3d: %-32s", i, "$i"
+            printf "%s", self.SeriesDetails["$i"].discrete ? " D" : "  "
+            print_is_string_valued(self.SeriesDetails["$i"])
+            print_label(self.SeriesDetails["$i"])
             printf "\n"
         endloop
     endif
     printf "\n\n"
 end function
-

@@ -202,7 +202,106 @@ end function
 test_extract_variable_contents()
 
 
+function void test_extract_series_metadata (void)
+    print "Start testing extract_series_metadata() for data set with string-valued series."
 
+    # Given
+    scalar n_string_vars_expected = 2
+    bundle B = _(n_string_vars = n_string_vars_expected)
+    string filename = "./data/grunfeld.xml"
+    string xml_buffer = readfile(filename)
+
+    # When
+    bundle B_actual = extract_series_metadata(B, xml_buffer)
+    scalar n_string_vars_actual = nelem(B_actual)
+
+    strings variable_names_actual = getkeys(B_actual)
+    string var1_name_expected = "ticker"
+    string var2_name_expected = "firmname"
+
+        scalar var1_n_strvals_actual = nelem(B_actual.ticker.string_values)
+    scalar var2_n_strvals_actual = nelem(B_actual.firmname.string_values)
+    scalar var1_n_strvals_expected = 10
+    scalar var2_n_strvals_expected = 10
+
+    matrix var1_name_exists = instrings(variable_names_actual, var1_name_expected)
+    matrix var2_name_exists = instrings(variable_names_actual, var2_name_expected)
+
+    # Then
+    assert(nelem(var1_name_exists) == 1)
+    assert(nelem(var2_name_exists) == 1)
+    assert(var1_n_strvals_actual == var1_n_strvals_expected)
+    assert(var2_n_strvals_actual == var2_n_strvals_expected)
+end function
+test_extract_series_metadata()
+
+
+function void test_extract_series_metadata_no (void)
+    print "Start testing extract_series_metadata() for data set with no string-valued series."
+
+    # Given
+    scalar n_string_vars_expected = 0
+    bundle B = _(n_string_vars = n_string_vars_expected)
+    string filename = "./data/grunfeld.xml"
+    string xml_buffer = readfile(filename)
+
+    # When
+    bundle B_actual = extract_series_metadata(B, xml_buffer)
+
+    # Then
+    assert(nelem(B_actual) == n_string_vars_expected)
+end function
+test_extract_series_metadata_no()
+
+
+function void test_merge_var_stringvals_dicts (void)
+    print "Start testing merge_var_stringvals_dicts()."
+
+    # Given
+    string var1_name_expected = "ticker"
+    string var2_name_expected = "firmname"
+    string var1_label_expected = "ID of var1"
+    string var2_label_expected = "ID of var2"
+
+    bundle VariableContents = null
+    bundle VariableContents.variable_1 = _(name = var1_name_expected, discrete = 1, label = var1_label_expected)
+    bundle VariableContents.variable_2 = _(name = var2_name_expected, label = var2_label_expected)
+
+    bundle StringValueContents = null
+    bundle StringValueContents["@var1_name_expected"] = _(is_string_valued = FALSE)
+    bundle StringValueContents["@var2_name_expected"] = _(is_string_valued = TRUE, string_values = defarray("Ford", "VW"))
+
+    # When
+    bundle B_actual = merge_var_stringvals_dicts(VariableContents, StringValueContents)
+
+    scalar n_keys_actual = nelem(B_actual)
+    scalar n_keys_expected = 2
+
+    strings keys_actual = getkeys(B_actual)
+    matrix var1_name_exists = instrings(keys_actual, var1_name_expected)
+    matrix var2_name_exists = instrings(keys_actual, var2_name_expected)
+
+    bundle bundle_var1 = B_actual.ticker
+    bundle bundle_var2 = B_actual.firmname
+
+    # Then
+    assert(n_keys_actual == n_keys_expected)
+    assert(nelem(var1_name_exists) == TRUE)
+    assert(nelem(var2_name_exists) == TRUE)
+
+    assert(bundle_var1.discrete == 1)
+    assert(bundle_var1.label == var1_label_expected)
+    assert(bundle_var1.is_string_valued == 0)
+
+    assert(inbundle(bundle_var2, "discrete") == FALSE)
+    assert(bundle_var2.label == var2_label_expected)
+    assert(bundle_var2.is_string_valued == TRUE)
+    assert(inbundle(bundle_var2, string_values) > 0)
+
+    assert(bundle_var2.string_values[1] == "Ford")
+    assert(bundle_var2.string_values[2] == "VW")
+end function
+test_merge_var_stringvals_dicts()
 
 
 print "Finished all tests succesfully."

@@ -1,14 +1,12 @@
-clear
 set verbose off
+include metadata.inp
 
-set workdir "/home/at/git/metadata"
+Meta = get_metadata("grunfeld.gdt")
+print Meta
 
-include "./src/metadata.inp" --force
+print_metadata(Meta)
+print_metadata(Meta, TRUE)
 
-
-loop foreach i grunfeld
-    b = get_gdtinfo("$i.gdt")
-
-    gdtinfo_print(b, 1)
-endloop
-
+# Extract series specific information
+eval Meta.SeriesDetails.firmname
+eval Meta.SeriesDetails.invest
