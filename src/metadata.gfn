@@ -3,7 +3,7 @@
 <gretl-function-package name="metadata" minver="20205a">
 <author email="atecon@posteo.de">Riccardo &quot;Jack&quot; Lucchetti and Artur Tarassow</author>
 <version>0.9</version>
-<date>2020-12-06</date>
+<date>2020-12-08</date>
 <description>Retrieve metadata from gdt files.</description>
 <tags>C13 C52</tags>
 <help>
@@ -71,7 +71,7 @@ SeriesDetails
 
 Changelog:
 ---------
-v0.9: initial release
+v0.9 (12-2020): initial release
 </help>
 <gretl-function name="get_metadata" type="bundle">
  <params count="1">
@@ -90,8 +90,10 @@ endif
 bundle self.get_paths_to_parse = get_paths_to_parse()
 bundle PathContents = extract_prepare_path_contents(self)
 cast_value_to_integer(&amp;PathContents)
+print PathContents
 bundle VariableContents = extract_variable_contents(PathContents, self.xml_buffer)
 cast_discrete_value(&amp;VariableContents)
+print VariableContents
 bundle StringValueContents = extract_series_metadata( PathContents, self.xml_buffer)
 bundle SeriesDetails = merge_var_stringvals_dicts(VariableContents, StringValueContents)
 bundle self = PathContents
@@ -237,7 +239,7 @@ return defarray(&quot;pd&quot;, &quot;nvar&quot;, &quot;n_string_vars&quot;)
 strings keys = get_value_names_to_cast_to_int()
 loop foreach i keys
   if inbundle(B, &quot;$i&quot;)
-    scalar B[&quot;$i&quot;] = atof(B[&quot;$i&quot;])
+    scalar B[&quot;$i&quot;] = nelem(B[&quot;$i&quot;]) ? atof(B[&quot;$i&quot;]) : 0
   endif
 endloop
 </code>

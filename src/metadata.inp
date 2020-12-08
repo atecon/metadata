@@ -123,7 +123,7 @@ function void cast_value_to_integer (bundle *B)
 
     loop foreach i keys
         if inbundle(B, "$i")
-            scalar B["$i"] = atof(B["$i"])
+            scalar B["$i"] = nelem(B["$i"]) ? atof(B["$i"]) : 0
         endif
     endloop
 end function
@@ -250,10 +250,12 @@ function bundle get_metadata (const string filename)
 
     bundle PathContents = extract_prepare_path_contents(self)
     cast_value_to_integer(&PathContents)
+    print PathContents
 
     bundle VariableContents = extract_variable_contents(PathContents, \
                                                         self.xml_buffer)
     cast_discrete_value(&VariableContents)
+    print VariableContents
 
 
     bundle StringValueContents = extract_series_metadata(\

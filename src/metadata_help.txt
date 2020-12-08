@@ -62,4 +62,4 @@ SeriesDetails
 
 Changelog:
 ---------
-v0.9: initial release
+v0.9 (12-2020): initial release

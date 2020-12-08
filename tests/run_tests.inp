@@ -111,20 +111,29 @@ function void test_cast_value_to_integer (void)
     print "Start testing cast_value_to_integer()."
 
     # Given
-    bundle B = _(some_string = "huhu", some_scalar = 3.2, pd = "7", \
-                 nvar = "23")
+    bundle B = _(some_string = "huhu", empty_string = "", \
+                some_scalar = 3.2, pd = "7", nvar = "23")
 
     # When
     cast_value_to_integer(&B)
     scalar pd_actual = B.pd
     scalar nvar_actual = B.nvar
+    scalar some_scalar_actual = B.some_scalar
+    string some_string_actual = B.some_string
+    string empty_string_actual = B.empty_string
 
     scalar pd_expected = 7
     scalar nvar_expected = 23
+    scalar some_scalar_expected = 3.2
+    string some_string_expected = "huhu"
+    string empty_string_expected = ""
 
     # Then
     assert(pd_actual == pd_expected)
     assert(nvar_actual == nvar_expected)
+    assert(some_scalar_actual == some_scalar_expected)
+    assert(some_string_actual == some_string_expected)
+    assert(empty_string_actual == empty_string_expected)
 end function
 test_cast_value_to_integer()
 
