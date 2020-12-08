@@ -1,15 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <gretl-functions>
-<gretl-function-package name="metadata" minver="20205a">
+<gretl-function-package name="metadata" no-data-ok="true" minver="2020e">
 <author email="atecon@posteo.de">Riccardo &quot;Jack&quot; Lucchetti and Artur Tarassow</author>
 <version>0.9</version>
 <date>2020-12-08</date>
 <description>Retrieve metadata from gdt files.</description>
-<tags>C13 C52</tags>
+<tags>C81</tags>
 <help>
 The metadata package supports the retrieval of varisous metadata from
 gdt data files. These data files are stored in a structured way following
 the xml standard.
+
+Please ask questions and report bugs on the gretl mailing list if possible. Alternatively, create an issue ticket on the github repo (see below).
+Source code and test script(s) can be found here:
+https://github.com/atecon/metadata
 
 
 The package comprises two public functions.
@@ -357,7 +361,7 @@ endif
 </gretl-function>
 <sample-script>
 set verbose off
-include metadata.inp
+include metadata.gfn
 
 Meta = get_metadata(&quot;grunfeld.gdt&quot;)
 print Meta

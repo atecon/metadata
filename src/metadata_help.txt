@@ -2,6 +2,10 @@ The metadata package supports the retrieval of varisous metadata from
 gdt data files. These data files are stored in a structured way following
 the xml standard.
 
+Please ask questions and report bugs on the gretl mailing list if possible. Alternatively, create an issue ticket on the github repo (see below).
+Source code and test script(s) can be found here:
+https://github.com/atecon/metadata
+
 
 The package comprises two public functions.
 

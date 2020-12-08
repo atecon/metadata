@@ -1,5 +1,5 @@
 set verbose off
-include metadata.inp
+include metadata.gfn
 
 Meta = get_metadata("grunfeld.gdt")
 print Meta

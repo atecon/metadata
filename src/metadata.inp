@@ -46,23 +46,23 @@ function bundle get_paths_to_parse (void)
     /* Config paths which should be parsed. */
 
     bundle Paths = _(\
-                        description = "//description", \
-                        version = "//gretldata[1]/@version", \
-                        name = "//gretldata[1]/@name", \
-                        t1 = "//gretldata[1]/@startobs", \
-                        t2 = "//gretldata[1]/@endobs", \
-                        type = "//gretldata[1]/@type", \
-                        pd = "//gretldata[1]/@frequency", \
-                        nvar = "/gretldata[1]/variables/@count", \
-                        n_string_vars = "/gretldata[1]/string-tables/@count" \
-                    )
+      description = "//description", \
+      version = "//gretldata[1]/@version", \
+      name = "//gretldata[1]/@name", \
+      t1 = "//gretldata[1]/@startobs", \
+      t2 = "//gretldata[1]/@endobs", \
+      type = "//gretldata[1]/@type", \
+      pd = "//gretldata[1]/@frequency", \
+      nvar = "/gretldata[1]/variables/@count", \
+      n_string_vars = "/gretldata[1]/string-tables/@count" \
+      )
 
     return Paths
 end function
 
 
 function strings get_variable_keys_to_parse (void)
-    /* Keys of metadata for each variable/ series to parse.
+/* Keys of metadata for each variable/ series to parse.
     NOTE: "name" MUST be positionied first! */
 
     strings variable_keys = defarray("name", "label", "discrete")
@@ -97,9 +97,9 @@ function bundle extract_prepare_path_contents (const bundle self)
         string keyname = sprintf("%s", "$i")
 
         string PathContents["@keyname"] = \
-                get_path_content(\
-                                self.get_paths_to_parse["$i"],\
-                                self.xml_buffer, &n_got)
+          get_path_content(\
+          self.get_paths_to_parse["$i"],\
+          self.xml_buffer, &n_got)
 
         if n_got
             PathContents["@keyname"] = trim_extra_lines(PathContents["@keyname"])
@@ -174,9 +174,9 @@ function bundle extract_series_metadata (const bundle PathContents,
                                          const string xml_buffer)
     /* Extract and compile for each string-valued series information in form of a ditionary such as:
 
-        key : Name of string-valued series
-        string_values: Array of distinct string-values (not ordered)
-     */
+       key : Name of string-valued series
+       string_values: Array of distinct string-values (not ordered)
+    */
 
     bundle B
 
@@ -253,14 +253,14 @@ function bundle get_metadata (const string filename)
     print PathContents
 
     bundle VariableContents = extract_variable_contents(PathContents, \
-                                                        self.xml_buffer)
+      self.xml_buffer)
     cast_discrete_value(&VariableContents)
     print VariableContents
 
 
     bundle StringValueContents = extract_series_metadata(\
-                                    PathContents, \
-                                    self.xml_buffer)
+      PathContents, \
+      self.xml_buffer)
 
     bundle SeriesDetails = merge_var_stringvals_dicts(VariableContents, StringValueContents)
     bundle self = PathContents
