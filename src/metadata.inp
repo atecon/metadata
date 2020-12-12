@@ -1,9 +1,19 @@
 function string trim_extra_lines (const string buffer)
+    /* */
 
     if nelem(buffer) == 0
         return ""
     endif
-    return strsplit(buffer, "\n")[1]
+    strings content = strsplit(buffer, "\n")
+
+    scalar n = nelem(content)
+    if n == 1
+        return content[n]
+    elif n > 1 #&& nelem(content[n]) == 0
+        return content[1]
+        # FIXME: printError("Need to flatten string array to string")
+        # FIXME: use latest strflatten() from string_utils (>=v0.3)
+    endif
 end function
 
 
@@ -97,11 +107,10 @@ function bundle extract_prepare_path_contents (const bundle self)
         string keyname = sprintf("%s", "$i")
 
         string PathContents["@keyname"] = \
-          get_path_content(\
-          self.get_paths_to_parse["$i"],\
-          self.xml_buffer, &n_got)
+          get_path_content(self.get_paths_to_parse["$i"],\
+                           self.xml_buffer, &n_got)
 
-        if n_got
+        if n_got && keyname != "description" # 'descriptions' can be longer
             PathContents["@keyname"] = trim_extra_lines(PathContents["@keyname"])
         endif
     endloop
@@ -136,7 +145,11 @@ function void cast_discrete_value (bundle *VariableContents)
 
     loop foreach i variable_id
         if inbundle(VariableContents["$i"], "discrete")
-            VariableContents["$i"].discrete = TRUE
+            if VariableContents["$i"].discrete == "true"
+                VariableContents["$i"].discrete = TRUE
+            else
+                VariableContents["$i"].discrete = FALSE
+            endif
         else
             VariableContents["$i"].discrete = FALSE
         endif
@@ -250,13 +263,11 @@ function bundle get_metadata (const string filename)
 
     bundle PathContents = extract_prepare_path_contents(self)
     cast_value_to_integer(&PathContents)
-    print PathContents
 
     bundle VariableContents = extract_variable_contents(PathContents, \
       self.xml_buffer)
-    cast_discrete_value(&VariableContents)
-    print VariableContents
 
+    cast_discrete_value(&VariableContents)
 
     bundle StringValueContents = extract_series_metadata(\
       PathContents, \

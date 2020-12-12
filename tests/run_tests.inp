@@ -311,6 +311,32 @@ end function
 test_merge_var_stringvals_dicts()
 
 
+#==================
+# Integration tests
+#==================
+
+function void test_data_4_10 (void)
+    print "Start integration test 1."
+
+    # Given
+    Meta = get_metadata("data4-10.gdt")
+
+    # When
+    scalar REGION_discrete_actual = Meta.SeriesDetails.REGION.discrete
+    scalar REGION_discrete_expected = TRUE
+
+    scalar PUPIL_discrete_actual = Meta.SeriesDetails.PUPIL.discrete
+    scalar PUPIL_discrete_expected = FALSE
+
+    # Then
+    assert(REGION_discrete_actual == REGION_discrete_expected)
+    assert(PUPIL_discrete_actual == PUPIL_discrete_expected)
+end function
+test_data_4_10()
+
+
+
+
 print "Finished all tests succesfully."
 quit
 

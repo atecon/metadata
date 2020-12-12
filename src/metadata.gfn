@@ -94,10 +94,8 @@ endif
 bundle self.get_paths_to_parse = get_paths_to_parse()
 bundle PathContents = extract_prepare_path_contents(self)
 cast_value_to_integer(&amp;PathContents)
-print PathContents
 bundle VariableContents = extract_variable_contents(PathContents, self.xml_buffer)
 cast_discrete_value(&amp;VariableContents)
-print VariableContents
 bundle StringValueContents = extract_series_metadata( PathContents, self.xml_buffer)
 bundle SeriesDetails = merge_var_stringvals_dicts(VariableContents, StringValueContents)
 bundle self = PathContents
@@ -130,10 +128,19 @@ printf &quot;\n\n&quot;
  <params count="1">
   <param name="buffer" type="string" const="true"/>
  </params>
-<code>if nelem(buffer) == 0
+<code>/* */
+if nelem(buffer) == 0
   return &quot;&quot;
 endif
-return strsplit(buffer, &quot;\n&quot;)[1]
+strings content = strsplit(buffer, &quot;\n&quot;)
+scalar n = nelem(content)
+if n == 1
+  return content[n]
+elif n &gt; 1 #&amp;&amp; nelem(content[n]) == 0
+  return content[1]
+  # FIXME: printError(&quot;Need to flatten string array to string&quot;)
+  # FIXME: use latest strflatten() from string_utils (&gt;=v0.3)
+endif
 </code>
 </gretl-function>
 <gretl-function name="is_minimum_gretl_version" type="scalar" private="1">
@@ -222,8 +229,8 @@ strings keys = getkeys(self.get_paths_to_parse)
 loop foreach i keys
   scalar n_got = 0
   string keyname = sprintf(&quot;%s&quot;, &quot;$i&quot;)
-  string PathContents[&quot;@keyname&quot;] = get_path_content( self.get_paths_to_parse[&quot;$i&quot;], self.xml_buffer, &amp;n_got)
-  if n_got
+  string PathContents[&quot;@keyname&quot;] = get_path_content(self.get_paths_to_parse[&quot;$i&quot;], self.xml_buffer, &amp;n_got)
+  if n_got &amp;&amp; keyname != &quot;description&quot; # 'descriptions' can be longer
     PathContents[&quot;@keyname&quot;] = trim_extra_lines(PathContents[&quot;@keyname&quot;])
   endif
 endloop
@@ -256,7 +263,11 @@ endloop
 strings variable_id = getkeys(VariableContents)
 loop foreach i variable_id
   if inbundle(VariableContents[&quot;$i&quot;], &quot;discrete&quot;)
-    VariableContents[&quot;$i&quot;].discrete = TRUE
+    if VariableContents[&quot;$i&quot;].discrete == &quot;true&quot;
+      VariableContents[&quot;$i&quot;].discrete = TRUE
+    else
+      VariableContents[&quot;$i&quot;].discrete = FALSE
+    endif
   else
     VariableContents[&quot;$i&quot;].discrete = FALSE
   endif
@@ -361,17 +372,32 @@ endif
 </gretl-function>
 <sample-script>
 set verbose off
-include metadata.gfn
+#include metadata.gfn
 
-Meta = get_metadata(&quot;grunfeld.gdt&quot;)
-print Meta
+include &quot;/home/at/git/metadata/src/metadata.inp&quot; --force
 
-print_metadata(Meta)
-print_metadata(Meta, TRUE)
+scalar EXAMPLE = 1
 
-# Extract series specific information
-eval Meta.SeriesDetails.firmname
-eval Meta.SeriesDetails.invest
+if EXAMPLE == 1
+    Meta = get_metadata(&quot;grunfeld.gdt&quot;)
+    print Meta
+
+    print_metadata(Meta)
+    print_metadata(Meta, TRUE)
+
+    # Extract some information
+    eval Meta.description
+    eval Meta.SeriesDetails.firmname
+    eval Meta.SeriesDetails.invest
+
+elif EXAMPLE == 2
+    Meta = get_metadata(&quot;data4-10.gdt&quot;)
+    eval Meta.SeriesDetails.PUPIL
+
+elif EXAMPLE == 3
+    Meta = get_metadata(&quot;mrw.gdt&quot;)
+    print Meta
+endif
 </sample-script>
 </gretl-function-package>
 </gretl-functions>

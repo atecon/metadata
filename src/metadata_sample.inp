@@ -1,12 +1,27 @@
 set verbose off
-include metadata.gfn
+#include metadata.gfn
 
-Meta = get_metadata("grunfeld.gdt")
-print Meta
+include "/home/at/git/metadata/src/metadata.inp" --force
 
-print_metadata(Meta)
-print_metadata(Meta, TRUE)
+scalar EXAMPLE = 1
 
-# Extract series specific information
-eval Meta.SeriesDetails.firmname
-eval Meta.SeriesDetails.invest
+if EXAMPLE == 1
+    Meta = get_metadata("grunfeld.gdt")
+    print Meta
+
+    print_metadata(Meta)
+    print_metadata(Meta, TRUE)
+
+    # Extract some information
+    eval Meta.description
+    eval Meta.SeriesDetails.firmname
+    eval Meta.SeriesDetails.invest
+
+elif EXAMPLE == 2
+    Meta = get_metadata("data4-10.gdt")
+    eval Meta.SeriesDetails.PUPIL
+
+elif EXAMPLE == 3
+    Meta = get_metadata("mrw.gdt")
+    print Meta
+endif
