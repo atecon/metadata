@@ -3,7 +3,7 @@ set verbose off
 
 include "/home/at/git/metadata/src/metadata.inp" --force
 
-scalar EXAMPLE = 3
+scalar EXAMPLE = 1
 
 if EXAMPLE == 1
     Meta = get_metadata("grunfeld.gdt")

@@ -105,8 +105,8 @@ end function
 test_get_path_content_noexists()
 
 
-function void test_cast_value_to_integer (void)
-    print "Start testing cast_value_to_integer()."
+function void test_cast_string_to_numeric (void)
+    print "Start testing cast_string_to_numeric()."
 
     # Given
     bundle B = _(some_string = "huhu", empty_string = "", \
@@ -114,7 +114,7 @@ function void test_cast_value_to_integer (void)
                 nvar = "23", version = "1.02")
 
     # When
-    cast_value_to_integer(&B)
+    cast_string_to_numeric(&B)
     scalar pd_actual = B.pd
     scalar nvar_actual = B.nvar
     scalar t1_actual = B.t1
@@ -143,7 +143,7 @@ function void test_cast_value_to_integer (void)
     assert(some_string_actual == some_string_expected)
     assert(empty_string_actual == empty_string_expected)
 end function
-test_cast_value_to_integer()
+test_cast_string_to_numeric()
 
 
 function void test_cast_discrete_value (void)
