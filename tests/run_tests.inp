@@ -110,18 +110,25 @@ function void test_cast_value_to_integer (void)
 
     # Given
     bundle B = _(some_string = "huhu", empty_string = "", \
-                some_scalar = 3.2, pd = "7", nvar = "23")
+                some_scalar = 3.2, t1 = "1", t2 = "3", pd = "7", \
+                nvar = "23", version = "1.02")
 
     # When
     cast_value_to_integer(&B)
     scalar pd_actual = B.pd
     scalar nvar_actual = B.nvar
+    scalar t1_actual = B.t1
+    scalar t2_actual = B.t2
+    scalar version_actual = B.version
     scalar some_scalar_actual = B.some_scalar
     string some_string_actual = B.some_string
     string empty_string_actual = B.empty_string
 
     scalar pd_expected = 7
     scalar nvar_expected = 23
+    scalar t1_expected = 1
+    scalar t2_expected = 3
+    scalar version_expected = 1.02
     scalar some_scalar_expected = 3.2
     string some_string_expected = "huhu"
     string empty_string_expected = ""
@@ -129,6 +136,9 @@ function void test_cast_value_to_integer (void)
     # Then
     assert(pd_actual == pd_expected)
     assert(nvar_actual == nvar_expected)
+    assert(t1_actual == t1_expected)
+    assert(t2_actual == t2_expected)
+    assert(version_actual == version_expected)
     assert(some_scalar_actual == some_scalar_expected)
     assert(some_string_actual == some_string_expected)
     assert(empty_string_actual == empty_string_expected)
@@ -316,27 +326,42 @@ test_merge_var_stringvals_dicts()
 #==================
 
 function void test_data_4_10 (void)
-    print "Start integration test 1."
+    print "Start integration test for data set 'data4-10.gdt'."
 
     # Given
     Meta = get_metadata("data4-10.gdt")
 
     # When
-    scalar REGION_discrete_actual = Meta.SeriesDetails.REGION.discrete
     scalar REGION_discrete_expected = TRUE
 
     scalar PUPIL_discrete_actual = Meta.SeriesDetails.PUPIL.discrete
     scalar PUPIL_discrete_expected = FALSE
 
     # Then
-    assert(REGION_discrete_actual == REGION_discrete_expected)
     assert(PUPIL_discrete_actual == PUPIL_discrete_expected)
 end function
 test_data_4_10()
 
 
+function void test_mrw (void)
+    print "Start integration test for data set 'mrw.gdt'."
+
+    # Given
+    Meta = get_metadata("mrw.gdt")
+    scalar nonoil_discrete_expected = TRUE
+    scalar school_discrete_expected = FALSE
+
+    # When
+    scalar nonoil_discrete_actual = Meta.SeriesDetails.nonoil.discrete
+    scalar school_discrete_actual = Meta.SeriesDetails.school.discrete
+
+    # Then
+    assert(nonoil_discrete_actual == nonoil_discrete_expected)
+    assert(school_discrete_actual == school_discrete_expected)
+end function
+test_mrw()
+
 
 
 print "Finished all tests succesfully."
 quit
-

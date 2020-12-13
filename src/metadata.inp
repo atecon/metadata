@@ -121,7 +121,7 @@ end function
 
 function strings get_value_names_to_cast_to_int (void)
     /* Array of keys for which values should be cast to integers. */
-    return defarray("pd", "nvar", "n_string_vars")
+    return defarray("pd", "t1", "t2", "nvar", "n_string_vars", "version")
 end function
 
 
@@ -302,7 +302,7 @@ function void print_metadata (const bundle self, const bool verbose[0])
     /* Print summary in nice readable fashion.*/
 
     printf "\n%s, %s. Contains %d series\n", self.name, self.type, self.nvar
-    printf "first obs: %s, last obs: %s\n", self.t1, self.t2
+    printf "first obs: %d, last obs: %d\n", self.t1, self.t2
 
     if verbose
         strings variables = getkeys(self.SeriesDetails)

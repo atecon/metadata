@@ -3,7 +3,7 @@ set verbose off
 
 include "/home/at/git/metadata/src/metadata.inp" --force
 
-scalar EXAMPLE = 1
+scalar EXAMPLE = 3
 
 if EXAMPLE == 1
     Meta = get_metadata("grunfeld.gdt")
@@ -19,9 +19,12 @@ if EXAMPLE == 1
 
 elif EXAMPLE == 2
     Meta = get_metadata("data4-10.gdt")
+    print Meta
     eval Meta.SeriesDetails.PUPIL
 
 elif EXAMPLE == 3
+    open mrw.gdt -q
     Meta = get_metadata("mrw.gdt")
     print Meta
+    eval Meta.SeriesDetails.nonoil.discrete
 endif
