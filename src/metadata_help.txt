@@ -1,4 +1,4 @@
-The metadata package supports the retrieval of varisous metadata from
+The metadata package supports the retrieval of various metadata from
 gdt data files. These data files are stored in a structured way following
 the xml standard.
 
@@ -64,6 +64,6 @@ SeriesDetails
 
 
 
-Changelog:
+Change-log:
 ---------
 v0.9 (12-2020): initial release
