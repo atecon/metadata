@@ -73,7 +73,7 @@ end function
 
 function strings get_variable_keys_to_parse (void)
 /* Keys of metadata for each variable/ series to parse.
-    NOTE: "name" MUST be positionied first! */
+    NOTE: "name" MUST be positioned first! */
 
     strings variable_keys = defarray("name", "label", "discrete")
 
@@ -97,7 +97,7 @@ end function
 
 
 function bundle extract_prepare_path_contents (const bundle self)
-    /* Loop over all specified paths and extract its contens from xml buffer. Store output in a key-value store. */
+    /* Loop over all specified paths and extract its consent from xml buffer. Store output in a key-value store. */
 
     bundle PathContents
     strings keys = getkeys(self.get_paths_to_parse)
@@ -185,7 +185,7 @@ end function
 
 function bundle extract_series_metadata (const bundle PathContents,
                                          const string xml_buffer)
-    /* Extract and compile for each string-valued series information in form of a ditionary such as:
+    /* Extract and compile for each string-valued series information in form of a dictionary such as:
 
        key : Name of string-valued series
        string_values: Array of distinct string-values (not ordered)
