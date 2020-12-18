@@ -445,11 +445,7 @@ endif
 </gretl-function>
 <sample-script>
 set verbose off
-#include metadata.gfn
-
-include string_utils.gfn
-
-include &quot;/home/at/git/metadata/src/metadata.inp&quot; --force
+include metadata.gfn
 
 scalar EXAMPLE = 1
 
