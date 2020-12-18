@@ -320,31 +320,116 @@ function void test_merge_var_stringvals_dicts (void)
 end function
 test_merge_var_stringvals_dicts()
 
+function void test_get_markers_flag (void)
+    print "Start testing get_markers_flag() for data set with markers."
+
+    # Given
+    string filename = "mrw.gdt"
+    string xml_buffer = readfile(filename)
+    string path = "/gretldata[1]/observations/"
+    scalar value_expected = TRUE
+
+    # When
+    scalar value_actual = get_markers_flag(xml_buffer, path)
+
+    # Then
+    assert(value_actual == value_expected)
+end function
+test_get_markers_flag()
+
+
+function void test_get_markers_flag_no_marker (void)
+    print "Start testing get_markers_flag() for data set without markers."
+
+    # Given
+    string filename = "denmark.gdt"
+    string xml_buffer = readfile(filename)
+    string path = "/gretldata[1]/observations/"
+    scalar value_expected = FALSE
+
+    # When
+    scalar value_actual = get_markers_flag(xml_buffer, path)
+
+    # Then
+    assert(value_actual == value_expected)
+end function
+test_get_markers_flag_no_marker()
+
+
+function void test_parse_markers (void)
+    print "Start testing parse_markers()."
+
+    # Given
+    string filename = "mrw.gdt"
+    string xml_buffer = readfile(filename)
+    string path = "/gretldata[1]/observations/"
+    scalar count = 3
+
+    # When
+    string marker1_expected = "Algeria"
+    string marker2_expected = "Angola"
+    string marker3_expected = "Benin"
+
+    strings marker_labels = parse_markers(count, xml_buffer, path)
+    string marker1_actual = marker_labels[1]
+    string marker2_actual = marker_labels[2]
+    string marker3_actual = marker_labels[3]
+
+    # Then
+    assert(marker1_actual == marker1_expected)
+    assert(marker2_actual == marker2_expected)
+    assert(marker3_actual == marker3_expected)
+end function
+test_parse_markers()
+
 
 #==================
 # Integration tests
 #==================
-
-function void test_data_4_10 (void)
-    print "Start integration test for data set 'data4-10.gdt'."
+function void test_data_4_10_no_markers (void)
+    print "Start integration test for data set 'data4-10.gdt' without calling markers."
 
     # Given
     Meta = get_metadata("data4-10.gdt")
 
     # When
     scalar REGION_discrete_expected = TRUE
-
     scalar PUPIL_discrete_actual = Meta.SeriesDetails.PUPIL.discrete
     scalar PUPIL_discrete_expected = FALSE
 
+    scalar markers_inbundle_expected = FALSE
+    scalar markers_inbundle_actual = inbundle(Meta, "markers")
+
     # Then
     assert(PUPIL_discrete_actual == PUPIL_discrete_expected)
+    assert(markers_inbundle_actual == markers_inbundle_expected)
 end function
-test_data_4_10()
+test_data_4_10_no_markers()
 
 
-function void test_mrw (void)
-    print "Start integration test for data set 'mrw.gdt'."
+function void test_data_4_10_with_markers (void)
+    print "Start integration test for data set 'data4-10.gdt' with calling markers."
+
+    # Given
+    Meta = get_metadata("data4-10.gdt", TRUE)
+
+    # When
+    scalar REGION_discrete_expected = TRUE
+    scalar PUPIL_discrete_actual = Meta.SeriesDetails.PUPIL.discrete
+    scalar PUPIL_discrete_expected = FALSE
+
+    scalar markers_inbundle_expected = TRUE
+    scalar markers_inbundle_actual = inbundle(Meta, "markers")
+
+    # Then
+    assert(PUPIL_discrete_actual == PUPIL_discrete_expected)
+    assert(markers_inbundle_actual != FALSE)
+end function
+test_data_4_10_with_markers()
+
+
+function void test_mrw_no_markers (void)
+    print "Start integration test for data set 'mrw.gdt' without calling markers."
 
     # Given
     Meta = get_metadata("mrw.gdt")
@@ -355,12 +440,51 @@ function void test_mrw (void)
     scalar nonoil_discrete_actual = Meta.SeriesDetails.nonoil.discrete
     scalar school_discrete_actual = Meta.SeriesDetails.school.discrete
 
+    scalar markers_inbundle_expected = FALSE
+    scalar markers_inbundle_actual = inbundle(Meta, "markers")
+
     # Then
     assert(nonoil_discrete_actual == nonoil_discrete_expected)
     assert(school_discrete_actual == school_discrete_expected)
+    assert(markers_inbundle_actual == markers_inbundle_expected)
 end function
-test_mrw()
+test_mrw_no_markers()
 
+
+function void test_mrw_with_markers (void)
+    print "Start integration test for data set 'mrw.gdt' with calling markers."
+
+    # Given
+    Meta = get_metadata("mrw.gdt", TRUE)
+    scalar nonoil_discrete_expected = TRUE
+    scalar school_discrete_expected = FALSE
+
+    # When
+    scalar nonoil_discrete_actual = Meta.SeriesDetails.nonoil.discrete
+    scalar school_discrete_actual = Meta.SeriesDetails.school.discrete
+
+    scalar markers_inbundle_expected = TRUE
+    scalar markers_inbundle_actual = inbundle(Meta, "markers")
+
+    string marker1_expected = "Algeria"
+    string marker2_expected = "Angola"
+    string marker3_expected = "Benin"
+
+    strings marker_labels = Meta.markers
+    string marker1_actual = marker_labels[1]
+    string marker2_actual = marker_labels[2]
+    string marker3_actual = marker_labels[3]
+
+    # Then
+    assert(nonoil_discrete_actual == nonoil_discrete_expected)
+    assert(school_discrete_actual == school_discrete_expected)
+    assert(markers_inbundle_actual != FALSE)
+
+    assert(marker1_actual == marker1_expected)
+    assert(marker2_actual == marker2_expected)
+    assert(marker3_actual == marker3_expected)
+end function
+test_mrw_with_markers()
 
 
 print "Finished all tests succesfully."

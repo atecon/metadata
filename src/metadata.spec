@@ -1,7 +1,7 @@
 author = Riccardo "Jack" Lucchetti and Artur Tarassow
 email = atecon@posteo.de
 version = 0.9
-date = 2020-12-08
+date = 2020-12-18
 description = Retrieve metadata from gdt files.
 tags = C81
 min-version = 2020e

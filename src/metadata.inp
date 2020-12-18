@@ -9,10 +9,8 @@ function string trim_extra_lines (const string buffer)
     scalar n = nelem(content)
     if n == 1
         return content[n]
-    elif n > 1 #&& nelem(content[n]) == 0
+    elif n > 1
         return content[1]
-        # FIXME: printError("Need to flatten string array to string")
-        # FIXME: use latest strflatten() from string_utils (>=v0.3)
     endif
 end function
 
@@ -79,6 +77,16 @@ function strings get_variable_keys_to_parse (void)
 
     return variable_keys
 end function
+
+function strings get_variables_keys_to_parse (void)
+/* Keys of metadata for each variables/ to parse. */
+
+    strings keys = defarray("count", "labels")
+
+    return keys
+end function
+
+
 
 function string get_path_content (const string path "xpath identifier",
                                   const string xml_buffer,
@@ -183,6 +191,67 @@ function bundle extract_variable_contents (const bundle PathContents,
 end function
 
 
+function bundle extract_observations_contents (const string xml_buffer)
+    /* Compile bundle holding astring array with markers if existing in xml. */
+
+    bundle ObservationsContents
+    strings variable_keys = get_variables_keys_to_parse()
+    string path = "/gretldata[1]/observations/"
+
+    scalar has_markers = get_markers_flag(xml_buffer, path)
+    if has_markers == FALSE
+        return ObservationsContents
+    endif
+
+    scalar count = get_markers_count(xml_buffer, path)
+
+    ObservationsContents.markers = parse_markers(count, xml_buffer, path)
+
+    return ObservationsContents
+end function
+
+
+function scalar get_markers_count (const string xml_buffer, const string path)
+    /* Get number of counts (==number of observations) and hence the number of non-distiguished markers. */
+
+    string key = sprintf("%s%s%s", path, "@", "count")
+    scalar n_got = 0
+    string content = get_path_content(key, xml_buffer, &n_got)
+    content = trim_extra_lines(content)
+
+    return atof(content)
+end function
+
+
+function scalar get_markers_flag (const string xml_buffer, const string path)
+    /* Parse flag and cast string to binary. */
+
+    string key = sprintf("%s%s%s", path, "@", "labels")
+    scalar n_got = 0
+    string content = get_path_content(key, xml_buffer, &n_got)
+    content = trim_extra_lines(content)
+
+    return (content == "true") ? TRUE : FALSE
+end function
+
+function strings parse_markers (const scalar count,
+                                const string xml_buffer,
+                                const string path)
+    /*  Parse markers from 'observation' keys. */
+
+    strings markers_labels = array(count)
+
+    loop i=1..count
+        scalar n_got = 0
+        string key = sprintf("%sobs[%d]/@label", path, i)
+        string content = get_path_content(key, xml_buffer, &n_got)
+        markers_labels[i] = trim_extra_lines(content)
+    endloop
+
+    return markers_labels
+end function
+
+
 function bundle extract_series_metadata (const bundle PathContents,
                                          const string xml_buffer)
     /* Extract and compile for each string-valued series information in form of a dictionary such as:
@@ -221,7 +290,7 @@ end function
 
 function bundle merge_var_stringvals_dicts (const bundle VariableContents,
                                             const bundle StringValueContents)
-    /* Merge information of both bundles. Each series name existent in gdt acts as a separate key. */
+    /* Merge information from both bundles. Each series name existent in gdt acts as a separate key. */
 
     bundle B
     scalar n_variables = nelem(VariableContents)
@@ -244,8 +313,8 @@ function bundle merge_var_stringvals_dicts (const bundle VariableContents,
 end function
 
 
-function bundle get_metadata (const string filename)
-    /* */
+function bundle get_metadata (const string filename,
+                              const bool get_markers[0])
 
     bundle self = null
     string self.filename = filename
@@ -262,6 +331,7 @@ function bundle get_metadata (const string filename)
     bundle self.get_paths_to_parse = get_paths_to_parse()
 
     bundle PathContents = extract_prepare_path_contents(self)
+
     cast_string_to_numeric(&PathContents)
 
     bundle VariableContents = extract_variable_contents(PathContents, \
@@ -273,9 +343,16 @@ function bundle get_metadata (const string filename)
       PathContents, \
       self.xml_buffer)
 
+    bundle VariablesContents = null
+    if get_markers == TRUE
+        bundle VariablesContents = extract_observations_contents(\
+            self.xml_buffer)
+    endif
+
     bundle SeriesDetails = merge_var_stringvals_dicts(VariableContents, StringValueContents)
     bundle self = PathContents
     bundle self.SeriesDetails = SeriesDetails
+    self = self + VariablesContents
 
     return self
 end function
